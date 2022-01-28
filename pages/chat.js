@@ -1,19 +1,41 @@
 import { Box, Text, TextField, Image, Button } from '@skynexui/components'
+import { createClient } from '@supabase/supabase-js'
 import React from 'react'
 import appConfig from '../config.json'
+
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlhdCI6MTY0MzMxNjM4NSwiZXhwIjoxOTU4ODkyMzg1fQ.Noxzdp3BA4whYgokVNTl9KKbhqzhb_hSUB9VmFC1zMM'
+const SUPABASE_URL = 'https://tewuuufqakmddvgezrzc.supabase.co'
+const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 export default function ChatPage() {
 	const [message, setMessage] = React.useState('')
 	const [messageList, setMessageList] = React.useState([])
 
+	React.useEffect(() => {
+		supabaseClient
+			.from('messages')
+			.select('*')
+			.order('id', {ascending:false})
+			.then(({ data }) => {
+				setMessageList(data)
+			})
+	}, [])
 
 	function handlerNewMessage(newMessage) {
 		const message = {
-			id: messageList.length + 1,
-			from: 'marcelompimentel',
+			author: 'marcelompimentel',
 			text: newMessage
 		}
-		setMessageList([message, ...messageList])
+
+		supabaseClient
+			.from('messages')
+			.insert([
+				message
+			])
+			.then(({ data }) => {  // é retornado o objeto do registro inserido
+				setMessageList([data[0], ...messageList])
+			})
+
 		setMessage('')
 	}
 
@@ -55,13 +77,7 @@ export default function ChatPage() {
 					}}
 				>
 					<MessageList list={messageList} />
-					{/* {messageList.map((currentMessage) => {
-						return (
-							<li key={currentMessage.id}>
-								{currentMessage.from}: {currentMessage.text}
-							</li>
-						)
-					})} */}
+
 					<Box
 						as='form'
 						styleSheet={{
@@ -158,9 +174,9 @@ function MessageList(props) {
 									display: 'inline-block',
 									marginRight: '8px',
 								}}
-								src={`https://github.com/marcelompimentel.png`}
+								src={`https://github.com/${message.author}.png`}
 							/>
-							<Text tag='strong'>{message.from}</Text>
+							<Text tag='strong'>{message.author}</Text>
 							<Text
 								styleSheet={{
 									fontSize: '10px',
@@ -168,8 +184,8 @@ function MessageList(props) {
 									color: appConfig.theme.colors.neutrals['300'],
 								}}
 								tag='span'
-							>
-								{(new Date().toLocaleDateString())}
+							>								
+								{message.created_at}
 							</Text>
 						</Box>
 						{message.text}
