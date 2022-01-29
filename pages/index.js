@@ -22,8 +22,8 @@ function Titulo(props) {
 
 
 export default function PaginaInicial() {
-	const [username, setUsername] = React.useState('marcelompimentel')
-	const roteamento = useRouter()
+	const [username, setUsername] = React.useState()
+	const router = useRouter()
 
 	return (
 		<>
@@ -54,7 +54,7 @@ export default function PaginaInicial() {
 						as="form"
 						onSubmit={function(event) {
 							event.preventDefault()
-							roteamento.push('/chat')
+							router.push(`/chat?username=${username}`)
 						}}
 						styleSheet={{
 							display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',

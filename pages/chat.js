@@ -1,13 +1,26 @@
-import { Box, Text, TextField, Image, Button } from '@skynexui/components'
-import { createClient } from '@supabase/supabase-js'
-import React from 'react'
 import appConfig from '../config.json'
+import React from 'react'
+import { createClient } from '@supabase/supabase-js'
+import { useRouter } from 'next/router'
+import { Box, Text, TextField, Image, Button } from '@skynexui/components'
+import { ButtonSendSticker } from '../src/components/ButtonSendSticker'
 
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlhdCI6MTY0MzMxNjM4NSwiZXhwIjoxOTU4ODkyMzg1fQ.Noxzdp3BA4whYgokVNTl9KKbhqzhb_hSUB9VmFC1zMM'
 const SUPABASE_URL = 'https://tewuuufqakmddvgezrzc.supabase.co'
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
+function listenerMessagesInRealtime(addMessage) {
+	return supabaseClient
+		.from('messages')
+		.on('INSERT', (response) => {
+			addMessage(response.new)
+		})
+		.subscribe()
+}
+
 export default function ChatPage() {
+	const router = useRouter()
+	const userLogged = router.query.username
 	const [message, setMessage] = React.useState('')
 	const [messageList, setMessageList] = React.useState([])
 
@@ -19,11 +32,21 @@ export default function ChatPage() {
 			.then(({ data }) => {
 				setMessageList(data)
 			})
+		
+		listenerMessagesInRealtime((newMessage) => {
+			// quando o listener é registrado, messageList ainda é vazio
+			// o React não 'avisa' o listener de que os estados mudaram
+			// para garantir uma messageList atualizada, é necessário passar uma função como parâmetro
+			// pois o setMessageList, recebendo uma função, sempre irá retornar o valor atual da messageList
+			setMessageList((updatedMessageList) => {
+				return [newMessage, ...updatedMessageList]
+			})
+		})
 	}, [])
 
 	function handlerNewMessage(newMessage) {
 		const message = {
-			author: 'marcelompimentel',
+			author: userLogged,
 			text: newMessage
 		}
 
@@ -33,7 +56,7 @@ export default function ChatPage() {
 				message
 			])
 			.then(({ data }) => {  // é retornado o objeto do registro inserido
-				setMessageList([data[0], ...messageList])
+				console.log(data)
 			})
 
 		setMessage('')
@@ -46,7 +69,7 @@ export default function ChatPage() {
 				backgroundColor: appConfig.theme.colors.primary['500'],
 				backgroundImage: 'url(https://virtualbackgrounds.site/wp-content/uploads/2020/08/the-matrix-digital-rain.jpg)',
 				backgroundRepeat: 'no-repeat', backgroundSize: 'cover', backgroundBlendMode: 'multiply',
-				color: appConfig.theme.colors.neutrals['000']
+				color: appConfig.theme.colors.neutrals['000'],
 			}}
 		>
 			<Box
@@ -107,6 +130,34 @@ export default function ChatPage() {
 								backgroundColor: appConfig.theme.colors.neutrals['800'],
 								marginRight: '12px',
 								color: appConfig.theme.colors.neutrals['200'],
+							}}
+						/>
+						<Button
+							onClick={() => {
+								handlerNewMessage(message)
+							}}
+							iconName='chevronRight'
+							styleSheet={{
+								borderRadius: '50%',
+                    			padding: '0 3px 0 0',
+                    			minWidth: '50px',
+                    			minHeight: '50px',
+                    			fontSize: '20px',
+                    			marginBottom: '8px',
+								marginRight: '8px',
+                    			lineHeight: '0',
+                    			display: 'flex',
+                    			alignItems: 'center',
+                    			justifyContent: 'center',
+                    			backgroundColor: appConfig.theme.colors.neutrals['800'],
+                    			hover: {
+                        			filter: 'grayscale(0)',
+                    			}
+							}}
+						/>
+						<ButtonSendSticker 
+							onStickerClick={(sticker) => {
+								handlerNewMessage(`:sticker:${sticker}`)
 							}}
 						/>
 					</Box>
@@ -188,7 +239,14 @@ function MessageList(props) {
 								{message.created_at}
 							</Text>
 						</Box>
-						{message.text}
+						{message.text.startsWith(':sticker:')
+							? (
+								<Image src={message.text.replace(':sticker:', '')} />
+							)
+							: (
+								message.text
+							)
+						}
 					</Text>
 				)
 			})}
